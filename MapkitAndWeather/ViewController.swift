@@ -55,16 +55,22 @@ final class ViewController: UIViewController {
     
     private let locationManager = CLLocationManager()
     
+    private var currentCoordinate = CLLocationCoordinate2D()
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         setupConstraints()
         setupActions()
+        
+        locationManager.delegate = self
+        
         checkDeviceLocation()
     }
     
     private func defaultLoction() {
+        
         let annotation = MKPointAnnotation()
         
         let latitude = 37.654218
@@ -91,6 +97,10 @@ final class ViewController: UIViewController {
                     authorization = CLLocationManager.authorizationStatus()
                 }
                 
+                DispatchQueue.main.async {
+                    self.checkCurrentLocationAuthorizationStatus(status: authorization)
+                }
+                
             } else {
                 DispatchQueue.main.async {
                     self.showSettingAlert()
@@ -100,6 +110,29 @@ final class ViewController: UIViewController {
     }
     
     private func checkCurrentLocationAuthorizationStatus(status: CLAuthorizationStatus) {
+        
+        switch status {
+        case .notDetermined:
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.requestWhenInUseAuthorization()
+            print("위치서비스에 대한 권한이 아직 설정되지 않음")
+        case .restricted:
+            defaultLoction()
+            showSettingAlert()
+            print("앱이 위치설정 거부 된 상태")
+        case .denied:
+            defaultLoction()
+            showSettingAlert()
+            print("요청 얼럿에서 위치설정 거부 된 상태")
+        case .authorizedAlways:
+            print("백그라운드에서도 실행 가능")
+        case .authorizedWhenInUse:
+            locationManager.startUpdatingLocation()
+            print("앱이 사용 중일 때만")
+        default:
+            print("관리자한테 문의")
+            
+        }
         
     }
     
@@ -143,7 +176,16 @@ final class ViewController: UIViewController {
     
     // MARK: - Actions
     @objc private func currentLocationButtonTapped() {
-        // 현재 위치 가져오기 구현
+        mapView.selectedAnnotations.removeLast()
+        checkDeviceLocation()
+        locationManager.stopUpdatingLocation()
+        let annotation = MKPointAnnotation()
+        let center = CLLocationCoordinate2D(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
+        annotation.coordinate = center
+    
+        mapView.region =  MKCoordinateRegion(center: center, latitudinalMeters: 300, longitudinalMeters: 300)
+        
+        mapView.addAnnotation(annotation)
     }
     
     @objc private func refreshButtonTapped() {
@@ -151,6 +193,28 @@ final class ViewController: UIViewController {
     }
 
 
+}
+
+extension ViewController: CLLocationManagerDelegate {
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
+        print(locations)
+        if let coordinate = locations.last?.coordinate {
+            print(coordinate)
+            currentCoordinate = coordinate
+        }
+    }
+    
+//    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
+//        
+//    }
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        print(#function)
+        checkDeviceLocation()
+    }
+    
 }
 
 
