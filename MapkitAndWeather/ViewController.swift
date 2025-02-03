@@ -53,9 +53,14 @@ final class ViewController: UIViewController {
         return button
     }()
     
-    private let locationManager = CLLocationManager()
+    private var locationManager = CLLocationManager()
     
     private var currentCoordinate = CLLocationCoordinate2D()
+   
+    private let refLatitude = 37.654218
+    private let refLongitude = 127.049952
+    
+    var annotation = MKPointAnnotation()
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -65,28 +70,30 @@ final class ViewController: UIViewController {
         setupActions()
         
         locationManager.delegate = self
-        
         checkDeviceLocation()
+        
     }
     
     private func defaultLoction() {
         
-        let annotation = MKPointAnnotation()
+        mapView.removeAnnotations(mapView.annotations)
         
-        let latitude = 37.654218
-        let longitude = 127.049952
-        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        
+        let center = CLLocationCoordinate2D(latitude: refLatitude, longitude: refLongitude)
         annotation.coordinate = center
     
         mapView.region =  MKCoordinateRegion(center: center, latitudinalMeters: 300, longitudinalMeters: 300)
         
         mapView.addAnnotation(annotation)
+        getWeather(latitude: refLatitude, longitude: refLongitude)
+      
     }
     
     
     private func checkDeviceLocation() {
         
         DispatchQueue.global().async {
+            // locationServicesEnabled = 앱 기준이 아닌 시스템 기준으로 위치서비스가 꺼져있을 때 False 발생
             if CLLocationManager.locationServicesEnabled() {
                 
                 let authorization: CLAuthorizationStatus
@@ -103,6 +110,7 @@ final class ViewController: UIViewController {
                 
             } else {
                 DispatchQueue.main.async {
+                    //  위치서비스 자체가 꺼져있을 때, 위치서비스로 이동하는 방법은 없을까?.
                     self.showSettingAlert()
                 }
             }
@@ -117,12 +125,17 @@ final class ViewController: UIViewController {
             locationManager.requestWhenInUseAuthorization()
             print("위치서비스에 대한 권한이 아직 설정되지 않음")
         case .restricted:
-            defaultLoction()
-            showSettingAlert()
+            //defaultLoction()
+            //showSettingAlert()
+            // 이거 이 조건은 직접적으로 테스트할 수 있는 환경이 불가능함.
             print("앱이 위치설정 거부 된 상태")
+        
         case .denied:
             defaultLoction()
-            showSettingAlert()
+            // 여기서 설정 화면으로 유도하게 되면 버튼이 아닌 단순 권한이 변경될 때마다 호출 됨
+            //showSettingAlert()
+            currentCoordinate.latitude = refLatitude
+            currentCoordinate.longitude = refLongitude
             print("요청 얼럿에서 위치설정 거부 된 상태")
         case .authorizedAlways:
             print("백그라운드에서도 실행 가능")
@@ -134,6 +147,21 @@ final class ViewController: UIViewController {
             
         }
         
+    }
+    
+    private func getWeather(latitude: CLLocationDegrees,
+                            longitude: CLLocationDegrees) {
+        NetworkManager.shared.callRequest(api: OpenWeatherRequest.weatherInfo(lat: String(latitude), lon: String(longitude))) { response in
+            
+            switch response {
+            case .success(let success):
+                self.weatherInfoLabel.text = "현재온도: \(success.main.temp)\n 최고온도: \(success.main.tempMax) \n 최저온도: \(success.main.tempMin)\n 습도: \(success.main.humidity)%\n 풍속: \(success.wind.speed)m/s"
+            case .failure(let failure):
+                dump(failure)
+            }
+            
+            
+        }
     }
     
     // MARK: - UI Setup
@@ -174,24 +202,51 @@ final class ViewController: UIViewController {
         refreshButton.addTarget(self, action: #selector(refreshButtonTapped), for: .touchUpInside)
     }
     
-    // MARK: - Actions
-    @objc private func currentLocationButtonTapped() {
-        mapView.selectedAnnotations.removeLast()
-        checkDeviceLocation()
-        locationManager.stopUpdatingLocation()
+    private func currentLocationUpdate() {
+        mapView.removeAnnotations(mapView.annotations)
+        
         let annotation = MKPointAnnotation()
         let center = CLLocationCoordinate2D(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
         annotation.coordinate = center
     
         mapView.region =  MKCoordinateRegion(center: center, latitudinalMeters: 300, longitudinalMeters: 300)
-        
+    
         mapView.addAnnotation(annotation)
+        getWeather(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
+    }
+    
+    // MARK: - Actions
+    @objc private func currentLocationButtonTapped() {
+        
+        let authorization: CLAuthorizationStatus
+        
+        if #available(iOS 14.0, *) {
+            authorization = self.locationManager.authorizationStatus
+        } else {
+            authorization = CLLocationManager.authorizationStatus()
+        }
+        // 버튼이 클릭되었을 때, 현재 권한 상태를 알아야 함.
+        // status 기준으로 하려고 했지만, status가 바뀌는 시점과 실제 동작하는 시점에 타밍잉 이슈가 있음
+        // (비동기로 처리되어서 그런거 같은데, DispatchQueue안에 status를 넣어도 동일함)
+        // 조금 더 깔끔한 방법을 찾아보자.
+        if authorization == .denied {
+            defaultLoction() // 지도 중심을 도봉캠퍼스로 옮기고 (denied에서 실질적으로 중복이나, 순서때문에 어쩔 수 없음)
+            showSettingAlert() // alert 띄우기
+        } else {
+            currentLocationUpdate()
+        }
+        
     }
     
     @objc private func refreshButtonTapped() {
         // 날씨 새로고침 구현
+    //    checkDeviceLocation()
+        
+        print(currentCoordinate.latitude,currentCoordinate.longitude)
+        getWeather(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
+        
     }
-
+    
 
 }
 
@@ -199,20 +254,22 @@ extension ViewController: CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         
-        print(locations)
         if let coordinate = locations.last?.coordinate {
-            print(coordinate)
             currentCoordinate = coordinate
+            currentLocationUpdate()
+            locationManager.stopUpdatingLocation()
         }
     }
     
-//    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
-//        
-//    }
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
+        dump(error)
+    }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        print(#function)
+    
         checkDeviceLocation()
+     
+        
     }
     
 }
@@ -231,6 +288,7 @@ extension ViewController {
         let goSetting = UIAlertAction(title: title, style: .default) { _ in
             if let setting = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(setting)
+                
             }
         }
         

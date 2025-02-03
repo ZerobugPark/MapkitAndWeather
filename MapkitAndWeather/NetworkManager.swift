@@ -51,10 +51,8 @@ class NetworkManager {
         AF.request(api.endPoint, method: api.method,parameters: api.prarmeter, encoding: URLEncoding(destination: .queryString)).responseDecodable(of: OpenWeather.self) { response in
             switch response.result {
             case .success(let value):
-                print(value)
                 completionHandler(.success(value))
             case .failure(let error):
-                print(error)
                 completionHandler(.failure(error))
             }
         }
