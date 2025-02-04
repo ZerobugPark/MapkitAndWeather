@@ -8,12 +8,12 @@
 import UIKit
 import PhotosUI
 
-class PHPikcerViewController: UIViewController {
+class PhotoPikcerViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Do any additional setup after loading the view.
+        view.backgroundColor = .red
     }
     
 

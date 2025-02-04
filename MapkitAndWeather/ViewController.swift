@@ -53,6 +53,14 @@ final class ViewController: UIViewController {
         return button
     }()
     
+    private let moveButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Move", for: .normal)
+        button.backgroundColor = .blue
+      
+        return button
+    }()
+    
     private var locationManager = CLLocationManager()
     
     private var currentCoordinate = CLLocationCoordinate2D()
@@ -168,7 +176,7 @@ final class ViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .white
         
-        [mapView, weatherInfoLabel, currentLocationButton, refreshButton].forEach {
+        [mapView, weatherInfoLabel, currentLocationButton, refreshButton, moveButton].forEach {
             view.addSubview($0)
         }
     }
@@ -195,11 +203,20 @@ final class ViewController: UIViewController {
             make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-20)
             make.width.height.equalTo(50)
         }
+        
+        moveButton.snp.makeConstraints { make in
+            make.height.equalTo(30)
+            make.width.equalTo(100)
+            make.centerX.equalTo(view)
+            make.bottom.equalTo(view.safeAreaLayoutGuide).inset(30)
+        }
     }
     
     private func setupActions() {
         currentLocationButton.addTarget(self, action: #selector(currentLocationButtonTapped), for: .touchUpInside)
         refreshButton.addTarget(self, action: #selector(refreshButtonTapped), for: .touchUpInside)
+        
+        moveButton.addTarget(self, action: #selector(moveButtonTapped), for: .touchUpInside)
     }
     
     private func currentLocationUpdate() {
@@ -228,7 +245,8 @@ final class ViewController: UIViewController {
         // 버튼이 클릭되었을 때, 현재 권한 상태를 알아야 함.
         // status 기준으로 하려고 했지만, status가 바뀌는 시점과 실제 동작하는 시점에 타밍잉 이슈가 있음
         // (비동기로 처리되어서 그런거 같은데, DispatchQueue안에 status를 넣어도 동일함)
-        // 조금 더 깔끔한 방법을 찾아보자.
+        // 조금 더 깔끔한 방법을 찾아보자. (네이버는 권한허용이 엄청빨리 뜨는거 같은데, 어느 시점에서 호출하면 빨리 뜰 수 있을까?)
+        // 백그라운드상태에서 포어그라운드 상태로 바뀐 상태를 알 수 있는 방법?
         if authorization == .denied {
             defaultLoction() // 지도 중심을 도봉캠퍼스로 옮기고 (denied에서 실질적으로 중복이나, 순서때문에 어쩔 수 없음)
             showSettingAlert() // alert 띄우기
@@ -247,6 +265,12 @@ final class ViewController: UIViewController {
         
     }
     
+    @objc private func moveButtonTapped() {
+        
+        let vc = PhotoPikcerViewController()
+        navigationController?.pushViewController(vc, animated: true)
+        
+    }
 
 }
 
@@ -266,7 +290,6 @@ extension ViewController: CLLocationManagerDelegate {
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    
         checkDeviceLocation()
      
         
