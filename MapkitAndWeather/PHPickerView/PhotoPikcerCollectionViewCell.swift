@@ -39,9 +39,14 @@ class PhotoPikcerCollectionViewCell: UICollectionViewCell {
             
         }
         
-        image.backgroundColor = .red
+        //image.backgroundColor = .red
     }
     
+    
+    func setImage(img: UIImage) {
+        
+        image.image = img
+    }
     
     
 }

@@ -11,11 +11,11 @@ import PhotosUI
 import SnapKit
 
 final class PhotoPikcerViewController: UIViewController {
-
+    
     
     lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: createCollectionViewLayout())
     
-    let images: [UIImage] = []
+    var images: [UIImage] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -47,8 +47,8 @@ final class PhotoPikcerViewController: UIViewController {
             make.top.edges.equalTo(view.safeAreaLayoutGuide)
             
         }
-
-      
+        
+        
     }
     
     
@@ -63,13 +63,13 @@ final class PhotoPikcerViewController: UIViewController {
             deviceWidth = 200
         }
         
-    
+        
         let spacing: CGFloat = 8
         let inset: CGFloat = 16
         let imageCount: CGFloat = 3
         
         let objectWidth = (deviceWidth - ((spacing * (imageCount - 1)) + (inset * 2))) / 3
-    
+        
         layout.minimumInteritemSpacing = spacing
         layout.minimumLineSpacing = spacing
         
@@ -85,17 +85,26 @@ final class PhotoPikcerViewController: UIViewController {
     
     
     @objc private func pikcerButtonTapped(_ sender: UIButton) {
-        print(#function)
+        
+        var congifuration = PHPickerConfiguration()
+        congifuration.filter = .images
+        congifuration.selectionLimit = 5
+        congifuration.mode = .default
+        
+        let pikcer = PHPickerViewController(configuration: congifuration)
+        pikcer.delegate = self
+        
+        present(pikcer, animated: true)
     }
-
+    
 }
 
 
 // MARK: - UICollectionView Extension
 extension PhotoPikcerViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    
-        return 5//images.count
+        
+        return images.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -103,11 +112,61 @@ extension PhotoPikcerViewController: UICollectionViewDelegate, UICollectionViewD
         
         guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoPikcerCollectionViewCell.id, for: indexPath) as? PhotoPikcerCollectionViewCell else { return UICollectionViewCell() }
         
+        cell.setImage(img: images[indexPath.item])
         
         return cell
     }
     
+}
+
+
+// MARK: - PHPickerViewController Extension
+extension PhotoPikcerViewController: PHPickerViewControllerDelegate {
+    
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        images.removeAll()
+        
+        guard !results.isEmpty else {
+            print("결과과 없습니다")
+            return
+        }
+        
+        let group = DispatchGroup()
+        
+        for i in 0..<results.count {
+            group.enter()
+            let itemProivder = results[i].itemProvider
+            if itemProivder.canLoadObject(ofClass: UIImage.self) {
+                itemProivder.loadObject(ofClass: UIImage.self) { image, error  in
+                    
+                 
+                    DispatchQueue.main.async {
+                        if let img = image as? UIImage {
+                            self.images.append(img)
+                        } else {
+                            print("이미지 로드 실패")
+                        }
+                    }
+                    group.leave()
+                    
+                    
+
+                    
+                }
+                
+            }
+        }
+        
+        dismiss(animated: true)
+        
+        group.notify(queue: .main) {
+            print(self.images.count)
+            self.collectionView.reloadData()
+        }
+        
+       
+    }
 
     
-    
 }
+
