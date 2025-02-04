@@ -13,9 +13,11 @@ import SnapKit
 final class PhotoPikcerViewController: UIViewController {
     
     
-    lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: createCollectionViewLayout())
+    private lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: createCollectionViewLayout())
     
-    var images: [UIImage] = []
+    private var images: [UIImage] = []
+    
+    var closure: ((UIImage) -> (Void))?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -115,6 +117,10 @@ extension PhotoPikcerViewController: UICollectionViewDelegate, UICollectionViewD
         cell.setImage(img: images[indexPath.item])
         
         return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        closure?(images[indexPath.item])
     }
     
 }

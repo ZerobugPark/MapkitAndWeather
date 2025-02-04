@@ -56,9 +56,16 @@ final class ViewController: UIViewController {
     private let moveButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Move", for: .normal)
-        button.backgroundColor = .blue
+        button.backgroundColor = .green
       
         return button
+    }()
+    
+    private let imgaeView: UIImageView = {
+        let image = UIImageView()
+        
+      
+        return image
     }()
     
     private var locationManager = CLLocationManager()
@@ -176,7 +183,7 @@ final class ViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .white
         
-        [mapView, weatherInfoLabel, currentLocationButton, refreshButton, moveButton].forEach {
+        [mapView, weatherInfoLabel, currentLocationButton, refreshButton, moveButton, imgaeView].forEach {
             view.addSubview($0)
         }
     }
@@ -210,6 +217,13 @@ final class ViewController: UIViewController {
             make.centerX.equalTo(view)
             make.bottom.equalTo(view.safeAreaLayoutGuide).inset(30)
         }
+        
+        imgaeView.snp.makeConstraints { make in
+            make.size.equalTo(100)
+            make.centerX.equalTo(view)
+            make.bottom.equalTo(moveButton.snp.top).offset(-10)
+        }
+       
     }
     
     private func setupActions() {
@@ -268,6 +282,11 @@ final class ViewController: UIViewController {
     @objc private func moveButtonTapped() {
         
         let vc = PhotoPikcerViewController()
+        
+        vc.closure = { image in
+            self.imgaeView.image = image
+        }
+        
         navigationController?.pushViewController(vc, animated: true)
         
     }
