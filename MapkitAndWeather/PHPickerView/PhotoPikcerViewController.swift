@@ -121,6 +121,7 @@ extension PhotoPikcerViewController: UICollectionViewDelegate, UICollectionViewD
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         closure?(images[indexPath.item])
+        navigationController?.popViewController(animated: true)
     }
     
 }
